@@ -1,0 +1,371 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mxfile host="Electron" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/28.1.2 Chrome/138.0.7204.243 Electron/37.4.0 Safari/537.36" version="28.1.2" pages="4">
+  <diagram name="Top" id="qzTm870V6ktIvcMlTvYR">
+    <mxGraphModel fold="1" pageWidth="1600" dx="1800" tooltips="1" guides="1" connect="1" grid="1" shadow="0" math="0" pageHeight="1050" dy="1100" gridSize="10" pageScale="1" page="1" arrows="1">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title-1" value="Janus4K Top Architecture - v0.5 draft aligned" style="text;html=1;strokeColor=none;fillColor=none;fontSize=22;fontStyle=1;align=left;verticalAlign=middle;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="30" y="20" width="1500" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="top-2" value="&lt;b&gt;BCC&lt;/b&gt;&lt;br&gt;Block descriptor decode&lt;br&gt;BStart / B.IOT / TLOAD&lt;br&gt;Tile dependency scheduler&lt;br&gt;GPR + AB/AM/LSU&lt;br&gt;resolve tracking + in-order retire" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="60" y="130" width="250" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="top-3" value="&lt;b&gt;Vector Core&lt;/b&gt;&lt;br&gt;4KB Vector Tile&lt;br&gt;V0-V8 pipeline&lt;br&gt;512B main pipes&lt;br&gt;SFU 256B/cycle" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="420" y="90" width="320" height="170" as="geometry" />
+        </mxCell>
+        <mxCell id="top-4" value="&lt;b&gt;Cube&lt;/b&gt;&lt;br&gt;Matrix PE&lt;br&gt;L0A/L0B buffers&lt;br&gt;large Tile = N x 4KB&lt;br&gt;resolve + block_id" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="420" y="350" width="260" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="top-5" value="&lt;b&gt;TMA&lt;/b&gt;&lt;br&gt;TileReg &amp;lt;-&amp;gt; DDR/Memory&lt;br&gt;2KB TileReg request&lt;br&gt;256B memory beat&lt;br&gt;load/store ordered" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="780" y="350" width="260" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="top-6" value="&lt;b&gt;Read Port Arbitration&lt;/b&gt;&lt;br&gt;clients: Vector / Cube / TMA&lt;br&gt;policy: RR&lt;br&gt;grant: 2KB window" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="820" y="105" width="250" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="top-7" value="&lt;b&gt;Global Src Buffer&lt;/b&gt;&lt;br&gt;6 entries x 2KB&lt;br&gt;feeds Vector issue" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="820" y="245" width="250" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="top-8" value="&lt;b&gt;TileReg&lt;/b&gt;&lt;br&gt;1MB shared buffer&lt;br&gt;4 logical banks&lt;br&gt;512B read/write per bank&lt;br&gt;2KB full-bandwidth window&lt;br&gt;4KB Vector Tile = 8 slices" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="1160" y="135" width="300" height="210" as="geometry" />
+        </mxCell>
+        <mxCell id="top-9" value="&lt;b&gt;Output Buffer&lt;/b&gt;&lt;br&gt;global, 512B entries&lt;br&gt;2KB source lock&lt;br&gt;cross-pipe forwarding&lt;br&gt;writeback arbitration&lt;br&gt;reduction reuse" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="1160" y="430" width="300" height="170" as="geometry" />
+        </mxCell>
+        <mxCell id="top-10" value="&lt;b&gt;Memory / DDR&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="780" y="610" width="260" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="top-11" value="&lt;b&gt;Control:&lt;/b&gt; dashed arrows carry Block / resolve&lt;br&gt;&lt;b&gt;Data:&lt;/b&gt; solid arrows carry Tile windows / results&lt;br&gt;&lt;b&gt;Completion:&lt;/b&gt; PE returns resolve + block_id, BCC retires in order" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="60" y="780" width="600" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="e-12" value="Vector Block" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;dashed=1;strokeColor=#666666;fontSize=11;" edge="1" parent="1" source="top-2" target="top-3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-13" value="Cube Block" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;dashed=1;strokeColor=#666666;fontSize=11;" edge="1" parent="1" source="top-2" target="top-4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-14" value="TMA Block" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;dashed=1;strokeColor=#666666;fontSize=11;" edge="1" parent="1" source="top-2" target="top-5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-15" value="resolve + block_id" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;dashed=1;strokeColor=#666666;fontSize=11;exitX=0;entryX=1;" edge="1" parent="1" source="top-3" target="top-2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-16" value="resolve" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;dashed=1;strokeColor=#666666;fontSize=11;" edge="1" parent="1" source="top-4" target="top-2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-17" value="resolve" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;dashed=1;strokeColor=#666666;fontSize=11;" edge="1" parent="1" source="top-5" target="top-2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-18" value="read request" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=11;" edge="1" parent="1" source="top-3" target="top-6">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-19" value="read request" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=11;" edge="1" parent="1" source="top-4" target="top-6">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-20" value="read request" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=11;" edge="1" parent="1" source="top-5" target="top-6">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-21" value="2KB grant" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=11;" edge="1" parent="1" source="top-6" target="top-8">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-22" value="2KB read return" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=11;" edge="1" parent="1" source="top-8" target="top-7">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-23" value="source window ready" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=11;" edge="1" parent="1" source="top-7" target="top-3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-24" value="512B results" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=11;" edge="1" parent="1" source="top-3" target="top-9">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-25" value="forwarding" style="endArrow=classic;startArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=11;" edge="1" parent="1" source="top-9" target="top-3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-26" value="writeback" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=11;" edge="1" parent="1" source="top-9" target="top-8">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-27" value="large Tile data" style="endArrow=classic;startArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=11;" edge="1" parent="1" source="top-4" target="top-8">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-28" value="2KB req" style="endArrow=classic;startArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=11;" edge="1" parent="1" source="top-5" target="top-8">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-29" value="256B beats" style="endArrow=classic;startArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=11;" edge="1" parent="1" source="top-5" target="top-10">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="5XHhVVS8Xl0pO7mz1BcI" name="Vector-pipe">
+    <mxGraphModel fold="1" pageWidth="2100" dx="1800" tooltips="1" guides="1" connect="1" grid="1" shadow="0" math="0" pageHeight="1250" dy="1100" gridSize="10" pageScale="1" page="1" arrows="1">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title-30" value="Vector Core Pipeline - focus of Janus4K v0.5" style="text;html=1;strokeColor=none;fillColor=none;fontSize=22;fontStyle=1;align=left;verticalAlign=middle;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="30" y="20" width="1900" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="v-31" value="V0&lt;br&gt;&lt;b&gt;Block Accept&lt;/b&gt;&lt;br&gt;BCC Vector Block&lt;br&gt;single target PE" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="40" y="100" width="180" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="v-32" value="V1&lt;br&gt;&lt;b&gt;TileOp Decode&lt;/b&gt;&lt;br&gt;BStart/B.IOT&lt;br&gt;dtype/packing&lt;br&gt;mask/reduction" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="250" y="100" width="190" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="e-33" value="" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=11;" edge="1" parent="1" source="v-31" target="v-32">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="v-34" value="V2&lt;br&gt;&lt;b&gt;Source Collect&lt;/b&gt;&lt;br&gt;Output Buffer lookup&lt;br&gt;hit: lock 2KB&lt;br&gt;miss: read req" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="480" y="100" width="220" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="e-35" value="" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=11;" edge="1" parent="1" source="v-32" target="v-34">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="v-36" value="V3&lt;br&gt;&lt;b&gt;Read Arbitration&lt;/b&gt;&lt;br&gt;RR among&lt;br&gt;Vector / Cube / TMA&lt;br&gt;grant 2KB" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="750" y="100" width="210" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="e-37" value="" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=11;" edge="1" parent="1" source="v-34" target="v-36">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="v-38" value="V4&lt;br&gt;&lt;b&gt;TileReg Return&lt;/b&gt;&lt;br&gt;TileReg 1MB&lt;br&gt;4 banks x 512B&lt;br&gt;Global Src Buffer&lt;br&gt;6 x 2KB" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="1010" y="100" width="230" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="e-39" value="" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=11;" edge="1" parent="1" source="v-36" target="v-38">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="v-40" value="V5&lt;br&gt;&lt;b&gt;uOp Issue&lt;/b&gt;&lt;br&gt;FMLA/FCVT Q&lt;br&gt;IALU/PERM/MAC Q&lt;br&gt;SFU Q" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="1300" y="100" width="220" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="e-41" value="" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=11;" edge="1" parent="1" source="v-38" target="v-40">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="v-42" value="V6&lt;br&gt;&lt;b&gt;Execute&lt;/b&gt;&lt;br&gt;FMLA/FCVT 512B&lt;br&gt;IALU/PERM/MAC 512B&lt;br&gt;SFU 256B/cycle" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="1570" y="100" width="230" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="e-43" value="" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=11;" edge="1" parent="1" source="v-40" target="v-42">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="v-44" value="V7&lt;br&gt;&lt;b&gt;Output Buffer&lt;/b&gt;&lt;br&gt;512B entries&lt;br&gt;2KB lock&lt;br&gt;forward / writeback" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="1840" y="100" width="220" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="e-45" value="" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=11;" edge="1" parent="1" source="v-42" target="v-44">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="v-46" value="V8&lt;br&gt;&lt;b&gt;Completion&lt;/b&gt;&lt;br&gt;TileOp done bitmap&lt;br&gt;Block done&lt;br&gt;resolve + block_id" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="1840" y="280" width="220" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="e-47" value="done" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;dashed=1;strokeColor=#666666;fontSize=11;" edge="1" parent="1" source="v-44" target="v-46">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="box-48" value="&lt;b&gt;TileOp decomposition&lt;/b&gt;&lt;br&gt;Vector Tile = 4KB = 8 x 512B slices&lt;br&gt;window0 = slice0..3 = 2KB&lt;br&gt;window1 = slice4..7 = 2KB" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="40" y="330" width="420" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="box-49" value="window0&lt;br&gt;srcA 2KB -&gt; srcB 2KB -&gt; srcC 2KB&lt;br&gt;then 4 x 512B uOp" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="500" y="330" width="360" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="box-50" value="window1&lt;br&gt;srcA 2KB -&gt; srcB 2KB -&gt; srcC 2KB&lt;br&gt;then 4 x 512B uOp" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="900" y="330" width="360" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="e-51" value="next window" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=11;" edge="1" parent="1" source="box-49" target="box-50">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="q-52" value="&lt;b&gt;FMLA/FCVT Queue&lt;/b&gt;&lt;br&gt;FMLA, FCVT/CVT&lt;br&gt;fixed to FMLA/FCVT Pipe" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="1290" y="500" width="250" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="q-53" value="&lt;b&gt;IALU/PERM/MAC Queue&lt;/b&gt;&lt;br&gt;IALU, PERM, MAC&lt;br&gt;TMAX/colmax reduction" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="1290" y="610" width="250" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="q-54" value="&lt;b&gt;SFU Queue&lt;/b&gt;&lt;br&gt;EXP / DIV&lt;br&gt;mask Tile supported" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="1290" y="735" width="250" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="p-55" value="&lt;b&gt;FMLA/FCVT Pipe&lt;/b&gt;&lt;br&gt;512B/cycle&lt;br&gt;512B result entry" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="1600" y="500" width="230" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="p-56" value="&lt;b&gt;IALU/PERM/MAC Pipe&lt;/b&gt;&lt;br&gt;512B/cycle&lt;br&gt;compare/reduction" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="1600" y="610" width="230" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="p-57" value="&lt;b&gt;SFU&lt;/b&gt;&lt;br&gt;256B/cycle&lt;br&gt;two 256B beats -&gt; one 512B entry" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="1600" y="735" width="230" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="ob-58" value="&lt;b&gt;Output Buffer detail&lt;/b&gt;&lt;br&gt;tag: tile/window/slice/uop&lt;br&gt;entry: 512B&lt;br&gt;lock: 2KB source window&lt;br&gt;unlocked entries try writeback every cycle" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="1870" y="560" width="220" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="e-59" value="" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=11;" edge="1" parent="1" source="q-52" target="p-55">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-60" value="" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=11;" edge="1" parent="1" source="q-53" target="p-56">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-61" value="" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=11;" edge="1" parent="1" source="q-54" target="p-57">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-62" value="" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=11;" edge="1" parent="1" source="p-55" target="ob-58">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-63" value="" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=11;" edge="1" parent="1" source="p-56" target="ob-58">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-64" value="" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=11;" edge="1" parent="1" source="p-57" target="ob-58">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="oc-65" value="&lt;b&gt;Operand Collector rule&lt;/b&gt;&lt;br&gt;1. lookup Output Buffer&lt;br&gt;2. hit -&gt; source ready, lock 2KB&lt;br&gt;3. miss -&gt; TileReg read request" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="500" y="500" width="360" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="rr-66" value="&lt;b&gt;RR read arbitration&lt;/b&gt;&lt;br&gt;clients: Vector compute / Cube / TMA&lt;br&gt;Vector src order: A, B, C&lt;br&gt;each grant = 2KB" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="900" y="500" width="330" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="e-67" value="miss" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=11;" edge="1" parent="1" source="oc-65" target="rr-66">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-68" value="hit / forwarding" style="endArrow=classic;startArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=11;" edge="1" parent="1" source="ob-58" target="oc-65">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="bp-69" value="&lt;b&gt;Backpressure points&lt;/b&gt;&lt;br&gt;TileOp Window full -&gt; BCC stalls&lt;br&gt;Operand Collector busy -&gt; TileOp stalls&lt;br&gt;RR pending -&gt; uOp group waits&lt;br&gt;Global Src Buffer full -&gt; read return stalls&lt;br&gt;uOp Queue full -&gt; dispatch stalls&lt;br&gt;Execute busy -&gt; issue stalls&lt;br&gt;Output Buffer full/locked -&gt; execute stalls&lt;br&gt;TileReg write busy -&gt; Output Buffer holds entry" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="40" y="500" width="410" height="250" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="h7T6l0-S0fBheLtDpjDQ" name="BCC-scalar pipe">
+    <mxGraphModel fold="1" pageWidth="1400" dx="1800" tooltips="1" guides="1" connect="1" grid="1" shadow="0" math="0" pageHeight="900" dy="1100" gridSize="10" pageScale="1" page="1" arrows="1">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title-70" value="BCC Control and Scalar Pipe" style="text;html=1;strokeColor=none;fillColor=none;fontSize=22;fontStyle=1;align=left;verticalAlign=middle;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="30" y="20" width="1200" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="bcc-71" value="&lt;b&gt;Block Decoder&lt;/b&gt;&lt;br&gt;BStart&lt;br&gt;B.IOT 3src+1dst&lt;br&gt;TLOAD&lt;br&gt;target PE" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="60" y="120" width="230" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="bcc-72" value="&lt;b&gt;Tile Dependency Scoreboard&lt;/b&gt;&lt;br&gt;src/dst Tile dependencies&lt;br&gt;no flag dependency&lt;br&gt;TMA memory ordering" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="360" y="120" width="260" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="bcc-73" value="&lt;b&gt;Dispatch&lt;/b&gt;&lt;br&gt;single target PE&lt;br&gt;Vector / Cube / TMA" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="700" y="120" width="230" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="bcc-74" value="&lt;b&gt;Resolve / Retire&lt;/b&gt;&lt;br&gt;resolve may return OOO&lt;br&gt;retire in order&lt;br&gt;release Tile/GPR deps" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="120" width="260" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="bcc-75" value="&lt;b&gt;GPR&lt;/b&gt;&lt;br&gt;scalar value exchange&lt;br&gt;across Blocks" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="530" y="360" width="220" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="bcc-76" value="&lt;b&gt;AB pipe&lt;/b&gt;&lt;br&gt;ALU + branch&lt;br&gt;2-pick" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="190" y="540" width="220" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="bcc-77" value="&lt;b&gt;AM pipe&lt;/b&gt;&lt;br&gt;ALU + multicycle&lt;br&gt;scalar multiply" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="530" y="540" width="220" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="bcc-78" value="&lt;b&gt;LSU&lt;/b&gt;&lt;br&gt;scalar load/store" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="870" y="540" width="220" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="e-79" value="" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=11;" edge="1" parent="1" source="bcc-71" target="bcc-72">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-80" value="" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=11;" edge="1" parent="1" source="bcc-72" target="bcc-73">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-81" value="" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=11;" edge="1" parent="1" source="bcc-73" target="bcc-74">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-82" value="" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=11;" edge="1" parent="1" source="bcc-75" target="bcc-76">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-83" value="" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=11;" edge="1" parent="1" source="bcc-75" target="bcc-77">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-84" value="" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=11;" edge="1" parent="1" source="bcc-75" target="bcc-78">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-85" value="" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=11;" edge="1" parent="1" source="bcc-76" target="bcc-75">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-86" value="" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=11;" edge="1" parent="1" source="bcc-77" target="bcc-75">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-87" value="" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=11;" edge="1" parent="1" source="bcc-78" target="bcc-75">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-88" value="release deps" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;dashed=1;strokeColor=#666666;fontSize=11;" edge="1" parent="1" source="bcc-74" target="bcc-72">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="3YaL-6kd8VccpItIp_W0" name="TileReg-4K">
+    <mxGraphModel fold="1" pageWidth="1500" dx="1800" tooltips="1" guides="1" connect="1" grid="1" shadow="0" math="0" pageHeight="950" dy="1100" gridSize="10" pageScale="1" page="1" arrows="1">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title-89" value="TileReg / Global Src Buffer / Output Buffer" style="text;html=1;strokeColor=none;fillColor=none;fontSize=22;fontStyle=1;align=left;verticalAlign=middle;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="30" y="20" width="1300" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="rf-90" value="&lt;b&gt;TileReg&lt;/b&gt;&lt;br&gt;1MB shared data buffer&lt;br&gt;4 logical banks&lt;br&gt;dual-port banks&lt;br&gt;read/write 512B per bank" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="520" y="90" width="360" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="bank-91" value="Bank0&lt;br&gt;512B slice/cycle" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="360" y="300" width="180" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="bank-92" value="Bank1&lt;br&gt;512B slice/cycle" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="560" y="300" width="180" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="bank-93" value="Bank2&lt;br&gt;512B slice/cycle" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="760" y="300" width="180" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="bank-94" value="Bank3&lt;br&gt;512B slice/cycle" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="960" y="300" width="180" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="rf-95" value="&lt;b&gt;4KB Vector Tile&lt;/b&gt;&lt;br&gt;8 x 512B slices&lt;br&gt;window0 = slices 0..3 = 2KB&lt;br&gt;window1 = slices 4..7 = 2KB&lt;br&gt;Tile address is contiguous" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="60" y="300" width="260" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="rf-96" value="&lt;b&gt;Read Arb&lt;/b&gt;&lt;br&gt;RR&lt;br&gt;Vector / Cube / TMA&lt;br&gt;grant 2KB window" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="60" y="90" width="240" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="rf-97" value="&lt;b&gt;Global Src Buffer&lt;/b&gt;&lt;br&gt;6 entries&lt;br&gt;2KB per entry&lt;br&gt;feeds Vector uOp issue" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="520" y="500" width="260" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="rf-98" value="&lt;b&gt;Output Buffer&lt;/b&gt;&lt;br&gt;global&lt;br&gt;512B entries&lt;br&gt;2KB source lock&lt;br&gt;forwarding + writeback arbitration" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="880" y="500" width="300" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="rf-99" value="&lt;b&gt;Write Arb&lt;/b&gt;&lt;br&gt;Output Buffer / Cube / TMA&lt;br&gt;preserve tag + slice order" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="1180" y="300" width="250" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="e-100" value="2KB read grant" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=11;" edge="1" parent="1" source="rf-96" target="rf-90">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-101" value="" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=11;" edge="1" parent="1" source="rf-90" target="bank-91">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-102" value="read return" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=11;" edge="1" parent="1" source="bank-91" target="rf-97">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-103" value="" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=11;" edge="1" parent="1" source="rf-90" target="bank-92">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-104" value="read return" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=11;" edge="1" parent="1" source="bank-92" target="rf-97">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-105" value="" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=11;" edge="1" parent="1" source="rf-90" target="bank-93">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-106" value="read return" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=11;" edge="1" parent="1" source="bank-93" target="rf-97">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-107" value="" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=11;" edge="1" parent="1" source="rf-90" target="bank-94">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-108" value="read return" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=11;" edge="1" parent="1" source="bank-94" target="rf-97">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-109" value="slice mapping" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;dashed=1;strokeColor=#666666;fontSize=11;" edge="1" parent="1" source="rf-95" target="bank-91">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-110" value="writeback req" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=11;" edge="1" parent="1" source="rf-98" target="rf-99">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-111" value="write grant" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=11;" edge="1" parent="1" source="rf-99" target="rf-90">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-112" value="forward hit bypasses read" style="endArrow=classic;startArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=11;" edge="1" parent="1" source="rf-98" target="rf-97">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
