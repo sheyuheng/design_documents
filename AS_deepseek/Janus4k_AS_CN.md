@@ -1,11 +1,11 @@
 # Janus4K AI Core 架构规格书
 
-> **版本:** v0.5-reviewed
+> **版本:** v0.5-enhanced
 > **日期:** 2026-04-27
-> **状态:** 正式 AS（已审阅，吸收 2026_4_27 可采纳内容）
-> **英文对照:** `Janus4k_AS_EN.md`
-> **审阅来源:** `../2026_4_27/Janus4k_AS_CN.md` / `../2026_4_27/Janus4k_AS_EN.md`
-> **前一版本:** v0.5-public (2026-04-26)
+> **状态:** 对外呈现版（中文增强版）
+> **英文对照:** `Janus4k_AS_EN.md`（同目录）
+> **前一版本:** `Janus4k_AS_EN.md` v0.5-public (2026-04-26)
+> **工作稿来源:** `Janus4k_AS_draft.md` v0.4-draft
 
 ---
 
@@ -25,9 +25,10 @@
 12. [参数表](#12-参数表)
 13. [调度、唤醒与发射模型](#13-调度唤醒与发射模型)
 14. [反压与流控](#14-反压与流控)
-15. [实现注意事项与存疑项处置](#15-实现注意事项与存疑项处置)
-16. [验证覆盖](#16-验证覆盖)
-17. [术语表](#17-术语表)
+15. [物理实现考量](#15-物理实现考量)
+16. [性能目标与瓶颈](#16-性能目标与瓶颈)
+17. [验证覆盖](#17-验证覆盖)
+18. [术语表](#18-术语表)
 
 ---
 
@@ -838,44 +839,68 @@ ISSUED ──> EXECUTING ──> OUTPUT_BUFFERED ──> WRITEBACK_DONE
 
 ---
 
-## 15. 实现注意事项与存疑项处置
+## 15. 物理实现考量
 
-本节只保留审阅后可转化为工程约束或明确开放项的内容。`2026_4_27` 生成稿中的相对 floorplan 建议、未经 workload/PPA 验证的瓶颈排序、版本演进对比和 Python 参数附录不并入正式 AS。
+### 15.1 关键时序路径
 
-### 15.1 保留为实现约束的点
+图中唯一直接被注释为物理敏感的路径：
 
-| 项目 | 约束 | 说明 |
-|---|---|---|
-| `Read Port Arbitration -> TileReg -> Global Src Buffer` | 作为读路径关键时序链路建模 | `~2 cycles` 正常传播、`~2-3 cycles` 拥塞传播只作为当前微架构时序目标，最终值需由 RTL/P&R 收敛 |
-| TileReg 逻辑 bank | 保持 4 个逻辑 bank、每 bank 512 B/cycle 的架构可见语义 | 物理 SRAM 分片、复制、多端口策略属于实现选择，不在本文硬编码 |
-| Output Buffer forwarding entry | 在被 consumer 锁定或 forwarding 可见期间不得覆盖或丢弃 | 写口阻塞必须反压执行尾部，而不是破坏依赖可见性 |
-| Global Src Buffer | entry 粒度为 2 KB，深度按 6 entries 建模 | entry 释放、tag 匹配和 full 反压需要 RTL 明确 |
-| TMA memory ordering | `memory_order_attr` 参与退休条件 | TMA Block 必须在保序约束满足后才能退休 |
+```text
+Read Port Arbitration → Tile Register File → Global Src Buffer
+```
 
-### 15.2 不并入正式 AS 的生成稿内容
+- 正常传播：~2 cycles
+- 布线拥塞/绕线：~2–3 cycles
+- 建议：Arbitration 紧邻 TileReg，Global Src Buffer 靠近 TileReg 出口
 
-| 生成稿内容 | 处理 | 原因 |
-|---|---|---|
-| 相对 floorplan 建议 | 丢弃为正式约束 | 缺少物理布局、SRAM 宏、时钟/布线和 PPA 数据支持 |
-| 性能瓶颈排序 | 不写成架构目标 | 需要实际 workload、仿真和实现数据验证；可保留为后续评审问题 |
-| “可能浪费”的判断 | 不作为规格结论 | 静态端口利用率取决于 workload 和调度策略，当前只保留反压/仲裁机制 |
-| 版本演进对比表 | 不并入正式 AS | 属于审阅记录，不是微架构契约 |
-| Python 参数附录 | 不作为源文件要求 | 正式参数以 §12 参数表为准；后续实现可从 AS 派生共享参数文件 |
+### 15.2 建议相对布局
 
-### 15.3 RTL 对齐开放项
+1. `Read Port Arbitration` 紧邻 `TileReg`。
+2. `Global Src Buffer` 放在 TileReg 执行侧出口。
+3. `FMLA/FCVT Pipe`、`IALU/PERM/MAC Pipe` 和 `SFU` 水平展开。
+4. Pipe 本地 Src/Output/Forward 结构紧贴 Pipe 入口/出口。
+5. 全局 `Output Buffer` 靠近 `Operand Collector / dispatch` 区域，便于依赖查询。
 
-| 开放项 | 需要收敛的内容 | 影响范围 |
-|---|---|---|
-| BCC 指令位宽 | `BStart/B.IOT/TLOAD` 精确编码、异常和错误上报 | 前端解码、验证、软件接口 |
-| TileReg 地址编码 | `tile_id/window_id/slice_id` 到 bank/offset 的精确映射 | TileReg、TMA、Vector/Cube 读写 |
-| Output Buffer 容量 | entry 数、tag/CAM 组织、锁定粒度、释放规则 | forwarding、writeback、reduction |
-| uOp queue 深度 | 三类 opclass queue 的深度和选择策略 | Vector 调度和反压 |
-| Cube 细节 | 阵列规模、L0A/L0B 深度、accumulator 宽度、输出 layout | Cube RTL 和与 TileReg 接口 |
-| dtype/mask 编码 | element width、packing、mask Tile 格式和 uOp 拆分规则 | Vector/Cube/TMA 数据解释 |
+### 15.3 预期实现挑战
+
+1. **TileReg 扇出** — 1 MB buffer 需同时为三个 client 提供高带宽。
+2. **读仲裁控制线** — 控制信号与数据线交织可能导致拥塞。
+3. **Pipe 跨距** — 两条执行 pipe 拉得过长，共享结构连接过远。
+4. **多端口化** — 过度多端口化会导致面积、时序和功耗失控。
+
+### 15.4 规避方向
+
+- 在进入 RTL 前正式化 TileReg banking 策略。
+- 定义 Global Src Buffer entry 释放和 tag 匹配规则。
+- 组织 Output Buffer tag 以高效 CAM lookup。
+- 明确定义读写冲突解决语义。
 
 ---
 
-## 16. 验证覆盖
+## 16. 性能目标与瓶颈
+
+### 16.1 双 Pipe 目标
+
+双执行 pipeline 的核心目标是**提升 compute-unit utilization**（而非峰值吞吐）。这意味着：
+- 不同 opclass 应映射到不同 pipe。
+- 长时延功能单元不应阻塞轻量算子。
+- 通过 Output Buffer 实现跨 pipe forwarding。
+
+### 16.2 预期瓶颈
+
+1. **Read Port Arbitration** — Vector/Cube/TMA 混合流量下的公平性。
+2. **TileReg 端口复杂度** — 4-bank 512B/cycle dual-port 的物理实现。
+3. **Global Src Buffer 深度** — ~6 entries 能否充分吸收 2–3 cycle 读延迟波动。
+4. **Output Buffer 容量** — 能否同时覆盖 forwarding、跨 pipe 数据、reduction 复用和延迟写回。
+5. **负载平衡** — FMLA/FCVT、IALU/PERM/MAC、SFU 的固定分区是否匹配实际 workload。
+
+### 16.3 浪费意识
+
+图中明确标注了"可能浪费"：静态分配的端口未必能被所有 workload 吃满。不同数据路径之间可能需要共享/复用策略，否则会出现一边拥塞、一边闲置。
+
+---
+
+## 17. 验证覆盖
 
 验证应覆盖以下架构行为：
 
@@ -922,7 +947,7 @@ ISSUED ──> EXECUTING ──> OUTPUT_BUFFERED ──> WRITEBACK_DONE
 
 ---
 
-## 17. 术语表
+## 18. 术语表
 
 | 术语 | 含义 |
 |---|---|
@@ -944,3 +969,64 @@ ISSUED ──> EXECUTING ──> OUTPUT_BUFFERED ──> WRITEBACK_DONE
 | Dtype/pack | 数据类型与 packing 格式（由 BStart 携带） |
 | Mask Tile | TileOp 的可选 mask 输入 |
 | TMAX/colmax | 示例 reduction/compare TileOp，展示 4-cycle 依赖延迟 |
+
+---
+
+## 附录 A：版本演进对比
+
+| 方面 | v0.4-draft (AS_draft) | v0.5-public (AS_EN) | v0.5-enhanced（本文） |
+|---|---|---|---|
+| Pipeline 阶段 | 隐含 | V0–V8 标注 | V0–V8 含详细时序和依赖 |
+| uOp 字段 | 草案（含 TBD 位宽） | 列出 | 结构化，含按 opclass 的细节 |
+| 依赖模型 | 引用 | §3.4 明确规则 | 扩展了 flag/side-effect 说明 |
+| Output Buffer 协议 | lock/writeback 描述 | 描述 | §6.2 lock/unlock 状态机 |
+| 时序模型 | ~2cy / ~2-3cy / 4cy | 列出数字 | 集成到参数表 + 关键路径分析 |
+| 反压 | 列出 | 列出 | 完整表格含上下游影响 |
+| 物理实现 | 建议 | 无 | §15 含 floorplan 和风险分析 |
+| 调度模型 | 隐含 | 无 | §13 两级调度 + 状态机 |
+| 性能瓶颈 | 隐含 | 无 | §16 明确瓶颈分析 |
+
+---
+
+## 附录 B：实现参考参数（Python 格式）
+
+这些参数应集中到共享参数文件（如 `janus4k_params.py`），确保 RTL、仿真模型和文档使用一致的常量：
+
+```python
+# Core data structure parameters
+TILEREG_BYTES           = 1 * 1024 * 1024   # 1 MB
+TILE_BYTES              = 4096              # 4 KB
+TILE_SLICE_BYTES        = 512               # 512 B
+TILEREG_BANKS           = 4
+TILEREG_BANK_BYTES_PER_CYCLE = 512
+TILEREG_RW_BYTES_PER_CYCLE  = 2048          # 2 KB
+
+# Buffer parameters
+GLOBAL_SRCBUF_ENTRIES   = 6
+GLOBAL_SRCBUF_ENTRY_BYTES = 2048
+OUTPUT_BUFFER_ENTRY_BYTES = 512
+
+# Block descriptor constraints
+MAX_DST_TILES_PER_BLOCK = 4
+MAX_SRC_TILE_DESC_GROUPS_PER_BLOCK = 2
+B_IOT_SRC_TILES         = 3
+B_IOT_DST_TILES         = 1
+
+# Execution unit parameters
+NUM_EXEC_CLASSES        = 3
+SFU_BYTES_PER_CYCLE     = 256
+
+# TMA parameters
+TMA_REQ_BYTES           = 2048
+TMA_MEM_BEAT_BYTES      = 256
+
+# Timing and arbitration
+READ_ARB_POLICY         = "RR"
+READ_PROP_LATENCY       = 2      # cycles
+READ_CONGESTED_LATENCY  = 3      # cycles (upper bound)
+REDUCE_DEP_LATENCY      = 4      # cycles (TMAX example)
+
+# Interconnect
+NUM_CLIENTS_READ_ARB    = 3      # Vector compute, Cube, TMA
+NUM_CLIENTS_WRITE_ARB   = 3      # Output Buffer, Cube, TMA
+```

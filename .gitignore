@@ -12,3 +12,25 @@ desktop.ini
 # Export scratch directories
 _export/
 _tmp/
+
+# Node / NPM
+node_modules/
+package-lock.json
+package.json
+
+# Generated artifacts
+*.pdf
+*.tar.gz
+md2pdf.js
+
+# OpenClaw workspace runtime/context files
+.openclaw/
+AGENTS.md
+BOOTSTRAP.md
+HEARTBEAT.md
+IDENTITY.md
+MEMORY.md
+SOUL.md
+TOOLS.md
+USER.md
+memory/

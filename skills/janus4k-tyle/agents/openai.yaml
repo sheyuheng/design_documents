@@ -1,0 +1,4 @@
+interface:
+  display_name: "Janus4K-tyle"
+  short_description: "Draft and review Janus4K AS docs in outerCube style."
+  default_prompt: "Use $janus4k-tyle to rewrite this AS section in the outerCube implementation-facing style."

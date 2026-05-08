@@ -1,11 +1,10 @@
 # Janus4K AI Core Architecture Specification
 
-> **Version:** v0.5-reviewed
+> **Version:** v0.5-enhanced
 > **Date:** 2026-04-27
-> **Status:** Formal AS (reviewed; selected 2026_4_27 material absorbed)
-> **Chinese counterpart:** `Janus4k_AS.md`
-> **Review sources:** `../2026_4_27/Janus4k_AS_CN.md` / `../2026_4_27/Janus4k_AS_EN.md`
-> **Previous revision:** v0.5-public (2026-04-26)
+> **Status:** Public presentation version (enhanced English edition)
+> **Previous revision:** `Janus4k_AS_EN.md` v0.5-public (2026-04-26)
+> **Working draft source:** `Janus4k_AS_draft.md` v0.4-draft
 
 ---
 
@@ -25,9 +24,10 @@
 12. [Parameter Table](#12-parameter-table)
 13. [Scheduling, Wakeup, and Dispatch Model](#13-scheduling-wakeup-and-dispatch-model)
 14. [Backpressure and Flow Control](#14-backpressure-and-flow-control)
-15. [Implementation Notes and Review Disposition](#15-implementation-notes-and-review-disposition)
-16. [Verification Coverage](#16-verification-coverage)
-17. [Glossary](#17-glossary)
+15. [Physical Implementation Considerations](#15-physical-implementation-considerations)
+16. [Performance Objectives and Bottlenecks](#16-performance-objectives-and-bottlenecks)
+17. [Verification Coverage](#17-verification-coverage)
+18. [Glossary](#18-glossary)
 
 ---
 
@@ -840,44 +840,68 @@ ISSUED ──> EXECUTING ──> OUTPUT_BUFFERED ──> WRITEBACK_DONE
 
 ---
 
-## 15. Implementation Notes and Review Disposition
+## 15. Physical Implementation Considerations
 
-This section keeps only material that can be converted into engineering constraints or explicit open items after review. The relative floorplan recommendations, unvalidated workload/PPA bottleneck ranking, version-comparison table, and Python parameter appendix from the `2026_4_27` generated draft are not absorbed into the formal AS.
+### 15.1 Critical Timing Path
 
-### 15.1 Kept as Implementation Constraints
+The **only** path explicitly flagged as physically sensitive in the diagrams:
 
-| Item | Constraint | Notes |
-|---|---|---|
-| `Read Port Arbitration -> TileReg -> Global Src Buffer` | Model this as the critical read-path timing chain. | `~2 cycles` normal propagation and `~2-3 cycles` congested propagation are current microarchitecture timing targets; final values must converge through RTL/P&R. |
-| TileReg logical banks | Preserve the architectural semantics of 4 logical banks, 512 B/cycle per bank. | Physical SRAM splitting, replication, and multi-port strategy are implementation choices and are not hardcoded here. |
-| Output Buffer forwarding entry | Do not overwrite or drop an entry while it is locked by a consumer or visible for forwarding. | Write-port stalls must backpressure the execution tail instead of breaking dependency visibility. |
-| Global Src Buffer | Model entries as 2 KB each, with 6 entries. | Entry release, tag matching, and full backpressure must be finalized in RTL. |
-| TMA memory ordering | `memory_order_attr` participates in retirement conditions. | A TMA Block retires only after its ordering constraints are satisfied. |
+```text
+Read Port Arbitration → Tile Register File → Global Src Buffer
+```
 
-### 15.2 Not Absorbed into the Formal AS
+- Normal propagation: ~2 cycles
+- With routing congestion/detour: ~2–3 cycles
+- Recommendation: Place arbitration logic close to TileReg; Global Src Buffer near TileReg exit.
 
-| Generated Draft Content | Disposition | Reason |
-|---|---|---|
-| Relative floorplan recommendations | Discarded as formal constraints. | No supporting physical layout, SRAM macro, clocking/routing, or PPA data. |
-| Performance bottleneck ranking | Not written as architecture goals. | Requires real workload, simulation, and implementation data; keep as review questions only. |
-| “Potential waste” judgment | Not treated as a spec conclusion. | Static port utilization depends on workload and scheduling policy; this AS keeps only arbitration/backpressure mechanisms. |
-| Version comparison table | Not included in the formal AS. | It is review history, not a microarchitecture contract. |
-| Python parameter appendix | Not treated as a source-file requirement. | The authoritative values are the parameter table in §12; future implementation may derive shared parameters from the AS. |
+### 15.2 Recommended Relative Floorplan
 
-### 15.3 RTL Alignment Open Items
+1. `Read Port Arbitration` adjacent to `TileReg`.
+2. `Global Src Buffer` near TileReg execution-side exit.
+3. `FMLA/FCVT Pipe`, `IALU/PERM/MAC Pipe`, and `SFU` horizontally arranged.
+4. Pipe-local Src/Output/Forward structures close to each pipe's entry/exit.
+5. Global `Output Buffer` near `Operand Collector / dispatch` area for efficient dependency lookups.
 
-| Open Item | Detail to Converge | Impact |
-|---|---|---|
-| BCC instruction widths | Exact `BStart/B.IOT/TLOAD` encoding, exceptions, and error reporting. | Front-end decode, verification, software interface. |
-| TileReg address encoding | Exact mapping from `tile_id/window_id/slice_id` to bank and offset. | TileReg, TMA, Vector/Cube reads and writes. |
-| Output Buffer capacity | Entry count, tag/CAM organization, lock granularity, and release rules. | Forwarding, writeback, reduction. |
-| uOp queue depth | Depth and selection policy of the three opclass queues. | Vector scheduling and backpressure. |
-| Cube details | Array size, L0A/L0B depth, accumulator width, and output layout. | Cube RTL and TileReg interface. |
-| dtype/mask encoding | Element width, packing, Mask Tile format, and uOp decomposition rules. | Vector/Cube/TMA data interpretation. |
+### 15.3 Expected Implementation Challenges
+
+1. **TileReg fanout** — the 1 MB buffer must serve three clients simultaneously at high bandwidth.
+2. **Read arbitration control lines** — control signals may interleave with data lines, causing congestion.
+3. **Pipe span** — two execution pipes stretched too far could make shared-structure connections overly long.
+4. **Multi-porting** — over-provisioning ports to satisfy all requesters may blow up area, timing, and power.
+
+### 15.4 Mitigation Directions
+
+- Formalize TileReg banking strategy before RTL.
+- Define Global Src Buffer entry release and tag matching rules.
+- Organize Output Buffer tags for efficient CAM lookup.
+- Clearly define read/write conflict resolution semantics.
 
 ---
 
-## 16. Verification Coverage
+## 16. Performance Objectives and Bottlenecks
+
+### 16.1 Dual-Pipeline Goal
+
+The dual execution pipelines are designed to **improve compute-unit utilization** (not peak throughput). This means:
+- Different opclasses should map to different pipes.
+- Long-latency functional units should not block lightweight operators.
+- Cross-pipe forwarding via Output Buffer maintains data flow.
+
+### 16.2 Expected Bottlenecks
+
+1. **Read Port Arbitration** — fairness and conflict resolution under mixed Vector/Cube/TMA traffic.
+2. **TileReg port complexity** — physical implementation of 4-bank 512B/cycle dual-port.
+3. **Global Src Buffer depth** — whether ~6 entries sufficiently absorbs 2–3 cycle read latency variation.
+4. **Output Buffer capacity** — whether it can simultaneously cover forwarding, cross-pipe data movement, reduction reuse, and deferred writeback.
+5. **Load balance** — whether the fixed FMLA/FCVT, IALU/PERM/MAC, SFU partition matches actual workload characteristics.
+
+### 16.3 Waste Awareness
+
+The diagrams explicitly note potential waste: statically allocated ports may not be saturated by all workloads. Different data paths may need sharing/steering strategies to avoid one path being congested while another sits idle.
+
+---
+
+## 17. Verification Coverage
 
 Verification should cover the following architectural behavior:
 
@@ -924,7 +948,7 @@ Verification should cover the following architectural behavior:
 
 ---
 
-## 17. Glossary
+## 18. Glossary
 
 | Term | Meaning |
 |---|---|
@@ -946,3 +970,64 @@ Verification should cover the following architectural behavior:
 | Dtype/pack | Data type and packing format (carried by BStart) |
 | Mask Tile | Optional Tile providing per-element masking for TileOps |
 | TMAX/colmax | Example reduction/compare TileOp — demonstrates 4-cycle dependency latency |
+
+---
+
+## Appendix A: Comparison to Previous Versions
+
+| Aspect | v0.4-draft (AS_draft) | v0.5-public (AS_EN) | v0.5-enhanced (this document) |
+|---|---|---|---|
+| Pipeline stages | Implicit | V0–V8 labeled | V0–V8 with detailed timing and dependencies |
+| uOp fields | Draft (with TBD widths) | Listed | Structured with per-opclass details |
+| Dependency model | Referenced | Explicit rules in §3.4 | Extended with flag/side-effect clarification |
+| Output Buffer protocol | Lock/writeback described | Described | Lock/unlock state machine in §6.2 |
+| Timing model | ~2cy / ~2-3cy / 4cy | Numbers listed | Integrated into parameter table and critical path analysis |
+| Backpressure | Listed | Listed | Comprehensive table with upstream/downstream effects |
+| Physical implementation | Suggested | Not present | §15 with floorplan and risk analysis |
+| Scheduling model | Implicit | Not present | Two-level + state machine in §13 |
+| Performance bottlenecks | Implied | Not present | §16 with explicit bottleneck analysis |
+
+---
+
+## Appendix B: Reference Parameters for Implementation
+
+These parameters should be centralized in a shared parameter file (e.g., `janus4k_params.py`) for consistency across RTL, simulation models, and documentation:
+
+```python
+# Core data structure parameters
+TILEREG_BYTES           = 1 * 1024 * 1024   # 1 MB
+TILE_BYTES              = 4096              # 4 KB
+TILE_SLICE_BYTES        = 512               # 512 B
+TILEREG_BANKS           = 4
+TILEREG_BANK_BYTES_PER_CYCLE = 512
+TILEREG_RW_BYTES_PER_CYCLE  = 2048          # 2 KB
+
+# Buffer parameters
+GLOBAL_SRCBUF_ENTRIES   = 6
+GLOBAL_SRCBUF_ENTRY_BYTES = 2048
+OUTPUT_BUFFER_ENTRY_BYTES = 512
+
+# Block descriptor constraints
+MAX_DST_TILES_PER_BLOCK = 4
+MAX_SRC_TILE_DESC_GROUPS_PER_BLOCK = 2
+B_IOT_SRC_TILES         = 3
+B_IOT_DST_TILES         = 1
+
+# Execution unit parameters
+NUM_EXEC_CLASSES        = 3
+SFU_BYTES_PER_CYCLE     = 256
+
+# TMA parameters
+TMA_REQ_BYTES           = 2048
+TMA_MEM_BEAT_BYTES      = 256
+
+# Timing and arbitration
+READ_ARB_POLICY         = "RR"
+READ_PROP_LATENCY       = 2      # cycles
+READ_CONGESTED_LATENCY  = 3      # cycles (upper bound)
+REDUCE_DEP_LATENCY      = 4      # cycles (TMAX example)
+
+# Interconnect
+NUM_CLIENTS_READ_ARB    = 3      # Vector compute, Cube, TMA
+NUM_CLIENTS_WRITE_ARB   = 3      # Output Buffer, Cube, TMA
+```
