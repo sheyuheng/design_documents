@@ -27,6 +27,7 @@ TMU 是 Janus 的**片上数据枢纽**，管理一块名为 **TileReg** 的可�
 - **峰值带宽**: 256B x 8 / cycle = 2048B/cycle
 - **低延迟**: 本地访问（node 访问自身 pipe）仅需 4 cycle
 - **确定性路由**: 静态最短路径路由，无动态路由
+- **无死锁**: 每条 Ring channel 保留至少 1 个 bubble / escape slot，注入受 token 约束
 - **无活锁/饿死**: 通过 Tag 机制和 Round-Robin 仲裁保证公平性
 - **可配置容量**: TileReg 大小可通过参数配置（默认 1MB）
 
@@ -126,6 +127,8 @@ TMU 内部包含**四条独立的 Ring 通道**：
 
 请求 Ring 和响应 Ring 完全解耦，可并行工作。
 
+每条 Ring 通道独立维护 token/bubble 状态。`req_cw`、`req_cc`、`rsp_cw`、`rsp_cc` 四条通道互不借用 token，避免一个方向或一种流量耗尽另一条通道的逃逸空槽。
+
 ### 3.4 路由策略
 
 采用**静态最短路径路由**，在编译时预计算每对 (src, dst) 的最优方向：
@@ -154,6 +157,55 @@ CW_PREF[src][dst] = 0  # 如果 CC 方向跳数更短
 | **n5** | 3 | 2 | 4 | 1 | 3 | 0 | 2 | 1 |
 | **n6** | 3 | 4 | 2 | 3 | 1 | 2 | 0 | 1 |
 | **n7** | 4 | 3 | 3 | 2 | 2 | 1 | 1 | 0 |
+
+### 3.6 Token / Bubble 防死锁模型
+
+Ring 是一个天然存在环形依赖的互联结构。如果允许注入把某条单向 Ring channel 的所有 link slot 都填满，那么当目的端暂时不能接收时，flit 之间可能形成首尾相接的等待。TMU 采用 token/bubble 机制限制注入，保证每条 Ring channel 始终保留至少一个可移动空槽。
+
+**定义**：
+
+| 项目 | 含义 |
+|------|------|
+| Ring channel | `req_cw` / `req_cc` / `rsp_cw` / `rsp_cc` 中的一条单向通道 |
+| Link slot | 相邻两个 station 之间的一级 Ring link 寄存器 |
+| Bubble / escape slot | Ring channel 中被保留的空 link slot，用于打破环形等待 |
+| Token | 可注入空槽的计数或所有权抽象；实现上可以是每通道 occupancy counter，也可以是随 bubble 移动的分布式 token |
+| `TOKEN_RESERVE` | 每条 Ring channel 至少保留的 bubble 数，默认值为 1 |
+
+**不变式**：
+
+```
+inflight_flits[channel] <= RING_STATIONS - TOKEN_RESERVE
+free_slots[channel]     >= TOKEN_RESERVE
+```
+
+其中 `RING_STATIONS = 8`，默认 `TOKEN_RESERVE = 1`，因此每条单向 Ring channel 同时在环上的 flit 数最多为 7。
+
+**Token 更新规则**：
+
+| 事件 | token / occupancy 更新 |
+|------|------------------------|
+| SPB 或 response inject FIFO 向 Ring 注入 1 个 flit | 消耗 1 个可注入 token，`inflight_flits++` |
+| Ring flit 在目的站成功 eject 到 pipe/MGB | 释放 1 个 token，`inflight_flits--` |
+| Ring flit 仅在相邻 link 间 forward | token 数不变 |
+| 本地目的站暂时不能接收，flit 继续绕行重试 | token 数不变 |
+
+**注入条件**：
+
+```
+can_inject(channel) =
+    outgoing_link_empty(channel)
+    && inject_fifo_not_empty(channel)
+    && (free_slots[channel] > TOKEN_RESERVE)
+```
+
+即使当前输出 link 为空，只要注入会把该 channel 的空槽数降到 `TOKEN_RESERVE` 以下，本地注入就必须暂停。Ring 上已有 flit 的 forward 始终优先于本地注入。
+
+**响应侧特殊规则**：
+
+响应 flit 到达目的 node 但对应 MGB 满时，不允许永久占住该 station 的输入 link。推荐实现为 **on-full forward / retry**：该 flit 保持原方向继续 forward，在下一圈再次尝试 eject。若 RTL 选择使用专用 escape buffer，也必须保证该 buffer 不消耗 `TOKEN_RESERVE` 对应的逃逸空槽。
+
+该规则将“目的端 MGB 满”从 Ring 级阻塞转换为端点反压，配合 bubble 保证不会出现所有 link 互相等待的环形死锁。
 
 ---
 
@@ -394,7 +446,7 @@ MGB 是响应下 Ring 的缓冲区，位于每个 node 的响应接收端。每�
 | 深度 | 4 entries |
 | 端口 | 2 写 1 读（一拍可同时接收 CW 和 CC 各一个 flit，单路出队） |
 | Bypass | **支持** bypass 下 Ring（队列为空且仅一个方向到达时可 bypass） |
-| 反压 | MGB 满时，反压 Ring 上的响应注入 |
+| 反压 | MGB 满时不接收本地响应；Ring 上已到达的响应 flit 继续绕行重试，本地响应注入 FIFO 受 token/输出 link 条件限制 |
 
 ### 8.3 MGB Bypass 机制
 
@@ -457,11 +509,13 @@ spb_cc_local  = spb_cc.valid AND (spb_cc.dst == 本站 node_id)
 ```
 CW 方向:
   if cw_in 非本地: 转发 cw_in（优先）
-  else if SPB_CW 非空且非本地: 注入 SPB_CW 头部
+  else if SPB_CW 非空且非本地 and can_inject(req_cw):
+      注入 SPB_CW 头部，并消耗 req_cw token
 
 CC 方向:
   if cc_in 非本地: 转发 cc_in（优先）
-  else if SPB_CC 非空且非本地: 注入 SPB_CC 头部
+  else if SPB_CC 非空且非本地 and can_inject(req_cc):
+      注入 SPB_CC 头部，并消耗 req_cc token
 ```
 
 ---
@@ -500,7 +554,14 @@ rsp_data = write ? 写入数据 : 读出数据
 rsp_dir  = CW_PREF[pipe_id][原始请求的src]  # 响应方向
 ```
 
-响应被送入对应方向的响应注入 FIFO（深度=4），等待注入响应 Ring。
+响应被送入对应方向的响应注入 FIFO（深度=4），等待注入响应 Ring。响应注入必须遵守对应响应 Ring channel 的 token 规则：
+
+```
+if rsp_inject_fifo 非空 and can_inject(rsp_dir):
+    注入响应 Ring，并消耗 rsp_dir token
+else:
+    响应保留在 inject FIFO 中
+```
 
 ---
 
@@ -529,15 +590,21 @@ cc_local = ring_cc_local OR rsp_inject_cc_local
 → 分别送入 MGB_CW 和 MGB_CC
 ```
 
+如果本地 MGB 有空间，则本地响应成功 eject，释放对应响应 Ring channel 的 token。若本地 MGB 满，则该 flit 不得永久阻塞当前 station；它保持原方向继续 forward，并在下一圈再次尝试 eject。
+
 **Step 4: Ring 转发与响应注入**
 ```
 CW 方向:
   if cw_in 非本地: 转发（优先）
-  else if rsp_inject_cw 非空且非本地: 注入
+  else if cw_in 本地但 MGB_CW 满: 继续 forward/retry
+  else if rsp_inject_cw 非空且非本地 and can_inject(rsp_cw):
+      注入，并消耗 rsp_cw token
 
 CC 方向:
   if cc_in 非本地: 转发（优先）
-  else if rsp_inject_cc 非空且非本地: 注入
+  else if cc_in 本地但 MGB_CC 满: 继续 forward/retry
+  else if rsp_inject_cc 非空且非本地 and can_inject(rsp_cc):
+      注入，并消耗 rsp_cc token
 ```
 
 ### 11.2 MGB 出队到外部
@@ -625,15 +692,29 @@ req_ready = dir_cw ? SPB_CW.in_ready : SPB_CC.in_ready
 
 Ring 上的 flit 转发优先于 SPB 注入。当 Ring slot 被占用时，SPB 无法注入，但不会丢失数据（SPB 保持 flit 直到 slot 空闲）。
 
+此外，SPB 或 response inject FIFO 即使看到输出 link 空闲，也必须先检查对应 Ring channel 的 token/bubble 条件。若 `free_slots[channel] == TOKEN_RESERVE`，本地注入暂停，只允许 Ring 上已有 flit forward 或目的站 eject 释放 token。
+
 ### 13.3 响应侧反压
 
-MGB 满时，Ring 上到达本站的响应无法弹出，会继续在 Ring 上流转（实际上会阻塞 Ring 转发）。
+MGB 满时，Ring 上到达本站的响应无法弹出，但不得阻塞 Ring 转发。该响应 flit 保持原方向继续绕行，下一圈再次尝试进入目的 MGB。
 
 外部 `resp_ready` 为低时，MGB 不出队，可能导致 MGB 满。
 
+### 13.4 Token 反压边界
+
+Token 反压只作用于**新注入**，不作用于 Ring 上已有 flit 的 forward：
+
+| 操作 | 是否受 token 限制 | 说明 |
+|------|-------------------|------|
+| Ring flit forward 到下一 station | 否 | 已在 Ring 上的 flit 必须优先前进 |
+| Ring flit eject 到 pipe/MGB | 否 | eject 会释放 token |
+| SPB 注入请求 flit | 是 | 需要 `can_inject(req_cw/req_cc)` |
+| response inject FIFO 注入响应 flit | 是 | 需要 `can_inject(rsp_cw/rsp_cc)` |
+| 本地 MGB 满导致响应绕行 | 否 | token 数不变，flit 保持在 Ring 上 |
+
 ---
 
-## 14. 防活锁/饿死机制
+## 14. 防死锁/活锁/饿死机制
 
 ### 14.1 Tag 机制
 
@@ -657,6 +738,17 @@ MGB 满时，Ring 上到达本站的响应无法弹出，会继续在 Ring 上�
 - 最短路径静态路由消除了动态路由可能引入的活锁
 - 请求和响应走独立的 Ring，避免请求-响应死锁
 
+### 14.5 Token 防死锁
+
+Token/bubble 机制解决 Ring 级环形等待问题：
+
+1. 每条单向 Ring channel 至少保留 `TOKEN_RESERVE` 个 bubble。
+2. 新注入只能消耗普通空槽，不能消耗最后的 escape slot。
+3. 目的端暂时不能接收的响应 flit 不阻塞 station，而是继续绕行重试。
+4. 当任意目的端 pipe/MGB 接收一个 flit 时，对应 channel 释放 token，等待中的注入 FIFO 才能继续注入。
+
+因此，即使所有 node 同时产生请求/响应、部分外部端口长期拉低 `resp_ready`，Ring 也不会因为“所有 link 都被占满且每个 flit 都等待下游释放”而进入不可恢复死锁。系统可能因端点持续反压而降吞吐或暂停注入，但 Ring channel 内部仍保留可移动空槽。
+
 ---
 
 ## 15. 调试接口
@@ -673,6 +765,11 @@ TMU 提供以下调试输出信号，用于波形观察和可视化：
 | `dbg_rsp_cc_v{i}` | 1 | 响应 Ring CC 方向 node_i 处 link 寄存器 valid |
 | `dbg_rsp_cw_meta{i}` | variable | 响应 Ring CW 方向 node_i 处 meta 信息 |
 | `dbg_rsp_cc_meta{i}` | variable | 响应 Ring CC 方向 node_i 处 meta 信息 |
+| `dbg_req_cw_free` | log2(RING_STATIONS+1) | 请求 CW channel 当前 free slot 数 |
+| `dbg_req_cc_free` | log2(RING_STATIONS+1) | 请求 CC channel 当前 free slot 数 |
+| `dbg_rsp_cw_free` | log2(RING_STATIONS+1) | 响应 CW channel 当前 free slot 数 |
+| `dbg_rsp_cc_free` | log2(RING_STATIONS+1) | 响应 CC channel 当前 free slot 数 |
+| `dbg_token_stall_{channel}` | 1 | 对应 channel 因 token/bubble 保留而暂停注入 |
 
 配套工具：
 - `janus/tools/plot_tmu_trace.py`: 将 trace CSV 渲染为 SVG 时序图
@@ -707,6 +804,7 @@ TMU 提供以下调试输出信号，用于波形观察和可视化：
 | Node IO 实例化 | L203-L232 | 8 个节点的 IO 端口创建 |
 | SPB 构建 | L234-L290 | 每节点 CW/CC 两个 SPB |
 | Ring link 寄存器 | L292-L331 | 请求/响应 Ring 的 link 寄存器 |
+| Token / bubble 管理 | TBD | 每条 Ring channel 的 occupancy/free-slot 计数与注入 gating |
 | 请求 Ring 遍历 | L338-L408 | 请求 Ring 每站逻辑（弹出/转发/注入） |
 | Pipe stage 寄存器 | L410-L426 | Pipe 访问前的寄存器级 |
 | 响应注入 FIFO | L428-L503 | Pipe 访问后的响应注入缓冲 |
@@ -738,12 +836,32 @@ for each node n in [0..7]:
 4. 等待读响应，验证读回数据 == 写入数据
 ```
 
+**Test 3: Token / Bubble 防死锁压力测试**
+```
+1. 8 个 node 同时向最远或近似最远 pipe 发起请求，尽量填满 req_cw/req_cc
+2. 随机拉低部分 node 的 resp_ready，使对应 MGB 接近满
+3. 持续注入读写混合流量，覆盖 rsp_cw/rsp_cc 的绕行重试
+4. 检查每条 channel 始终满足:
+   free_slots[channel] >= TOKEN_RESERVE
+5. 恢复所有 resp_ready 后，所有已接收请求最终返回响应，不允许出现永久无进展
+```
+
 ### 17.2 验证要点
 
 - Tag 匹配：响应的 tag 必须与请求的 tag 一致
 - 数据完整性：读回的 32 个 64-bit word 必须与写入完全一致
 - resp_is_write：正确反映原始请求类型
+- Token 不变式：每条 Ring channel 的 free slot 数不低于 `TOKEN_RESERVE`
+- MGB 满绕行：响应目的端 MGB 满时，flit 继续绕行且最终可在 MGB 空出后 eject
 - 超时检测：2000 cycle 内未收到响应则报错
+
+---
+
+## 18. 参考资料
+
+1. W. J. Dally, C. L. Seitz, *Deadlock-Free Message Routing in Multiprocessor Interconnection Networks*，讨论通过 channel dependency graph 判断路由死锁。<https://authors.library.caltech.edu/records/fd0yr-br438>
+2. N. Jiang 等，*Static Bubble: A Framework for Deadlock-free Irregular On-chip Topologies*，HPCA 2017，讨论 bubble flow control 保留空 buffer 以保证无死锁注入。<https://jrom.ece.gatech.edu/wp-content/uploads/sites/332/2016/09/staticbubble_hpca2017.pdf>
+3. A. B. Ahmed, A. B. Abdallah，*Graceful Deadlock-Free Fault-Tolerant Routing Algorithm for 3D Network-on-Chip Architectures*，整理 bubble flow control / worm-bubble flow control 在 NoC 中的无死锁约束。<https://www.mdpi.com/2072-666X/13/12/2246>
 
 ---
 
